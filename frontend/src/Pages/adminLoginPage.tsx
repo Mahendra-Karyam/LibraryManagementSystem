@@ -14,7 +14,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:3030/admin/login",
+        "https://librarymanagementsystem-6aca.onrender.com/admin/login",
         { email, password },
         {
           headers: { "Content-Type": "application/json" },
