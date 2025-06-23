@@ -51,7 +51,7 @@ export default function AvailableBooksForUser() {
   const fetchUser = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://localhost:3030/user", {
+      const res = await axios.get("https://librarymanagementsystem-6aca.onrender.com/user", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserName(res.data.user.userName || "User");
@@ -65,7 +65,7 @@ export default function AvailableBooksForUser() {
 
   const fetchBooks = async () => {
     try {
-      const res = await axios.get("http://localhost:3030/AllBooks");
+      const res = await axios.get("https://librarymanagementsystem-6aca.onrender.com/AllBooks");
       setBooks(res.data.Books);
     } catch (error) {
       console.error("Error fetching books:", error);
@@ -85,7 +85,7 @@ export default function AvailableBooksForUser() {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:3030/books/borrow/${id}`,
+        `https://librarymanagementsystem-6aca.onrender.com/books/borrow/${id}`,
         { BorrowerName: userName },
         {
           headers: {
@@ -121,7 +121,7 @@ export default function AvailableBooksForUser() {
 
   const handleReturn = async (id: string, bookTitle: string) => {
     try {
-      await axios.put(`http://localhost:3030/books/return/${id}`);
+      await axios.put(`https://librarymanagementsystem-6aca.onrender.com/books/return/${id}`);
       showAlert(`'${bookTitle}' returned successfully. Thank you!`);
       await fetchBooks();
       topRef.current?.scrollIntoView({
