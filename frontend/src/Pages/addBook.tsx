@@ -16,7 +16,7 @@ export default function AddBook() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:3030/admin/dashboard/addbook",
+        "https://librarymanagementsystem-6aca.onrender.com/admin/dashboard/addbook",
         { Title, Author, Genre, imageURL, PDFLink },
         {
           headers: { "Content-Type": "application/json" },
