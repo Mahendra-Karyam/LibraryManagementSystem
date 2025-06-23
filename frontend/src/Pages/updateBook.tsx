@@ -18,7 +18,7 @@ export default function UpdateBook() {
   useEffect(() => {
     const fetchBook = async () => {
       try {
-        const res = await axios.get(`http://localhost:3030/book/${id}`);
+        const res = await axios.get(`https://librarymanagementsystem-6aca.onrender.com/book/${id}`);
         const book = res.data.book;
         setTitle(book.Title);
         setAuthor(book.Author);
@@ -37,7 +37,7 @@ export default function UpdateBook() {
     e.preventDefault();
     try {
       const res = await axios.put(
-        `http://localhost:3030/books/update/${id}`,
+        `https://librarymanagementsystem-6aca.onrender.com/books/update/${id}`,
         { Title, Author, Genre, Availability, imageURL, PDFLink },
         {
           headers: { "Content-Type": "application/json" },
