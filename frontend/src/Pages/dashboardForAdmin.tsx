@@ -9,7 +9,7 @@ export default function DashboardForAdmin() {
   const [searchTerm, setSearchTerm] = useState("");
   const fetchBooks = async () => {
     try {
-      const res = await axios.get("http://localhost:3030/AllBooks");
+      const res = await axios.get("https://librarymanagementsystem-6aca.onrender.com/AllBooks");
       setBooks(res.data.Books);
     } catch (error) {
       console.error("Error fetching SPI data:", error);
@@ -21,7 +21,7 @@ export default function DashboardForAdmin() {
 
   const handleDelete = async (bookId: string) => {
     try {
-      await axios.delete(`http://localhost:3030/books/delete/${bookId}`);
+      await axios.delete(`https://librarymanagementsystem-6aca.onrender.com/books/delete/${bookId}`);
       setBooks(books.filter((book) => book._id !== bookId));
     } catch (error) {
       console.error("Error deleting book:", error);
