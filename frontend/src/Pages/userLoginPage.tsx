@@ -30,7 +30,7 @@ export default function UserLoginPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "https://librarymanagementsystem-6aca.onrender.com/user/login",
+        "http://localhost:3030/user/login",
         { email, password },
         {
           headers: { "Content-Type": "application/json" },
@@ -40,6 +40,7 @@ export default function UserLoginPage() {
       if (res.status === 200 || res.status === 201) {
         const token = res.data.token;
         localStorage.setItem("token", token); // ✅ Save the new user's token
+        localStorage.setItem("role", "user");
         navigate("/user/availablebooks");
         alert("Login successful!");
         setEmail("");
@@ -63,7 +64,7 @@ export default function UserLoginPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "https://librarymanagementsystem-6aca.onrender.com/user/signup",
+        "http://localhost:3030/user/signup",
         { userName, email, password },
         {
           headers: { "Content-Type": "application/json" },
