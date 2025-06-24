@@ -7,6 +7,7 @@ import AdminLoginPage from "./Pages/adminLoginPage.tsx";
 import DashBoradForAdmin from "./Pages/dashboardForAdmin.tsx";
 import AddBook from "./Pages/addBook.tsx";
 import UpdateBook from "./Pages/updateBook.tsx";
+import ProtectedRoute from "./ProtectedRoute.tsx";
 export default function App() {
   return (
     <Router>
@@ -15,15 +16,37 @@ export default function App() {
         <Route path="/user/login" element={<UserLoginPage />} />
         <Route path="/user/signup" element={<UserLoginPage />} />
         <Route
-          path="/user/availablebooks/"
-          element={<AvailableBooksForUser />}
+          path="/user/availablebooks"
+          element={
+            <ProtectedRoute>
+              <AvailableBooksForUser />
+            </ProtectedRoute>
+          }
         />
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin/dashboard" element={<DashBoradForAdmin />} />
-        <Route path="/admin/dashboard/addbook" element={<AddBook />} />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashBoradForAdmin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard/addbook"
+          element={
+            <ProtectedRoute>
+              <AddBook />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/dashboard/updatebook/:id"
-          element={<UpdateBook />}
+          element={
+            <ProtectedRoute>
+              <UpdateBook />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </Router>
