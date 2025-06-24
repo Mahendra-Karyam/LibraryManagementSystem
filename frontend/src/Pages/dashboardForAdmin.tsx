@@ -9,7 +9,7 @@ export default function DashboardForAdmin() {
   const [searchTerm, setSearchTerm] = useState("");
   const fetchBooks = async () => {
     try {
-      const res = await axios.get("https://librarymanagementsystem-6aca.onrender.com/AllBooks");
+      const res = await axios.get("http://localhost:3030/AllBooks");
       setBooks(res.data.Books);
     } catch (error) {
       console.error("Error fetching SPI data:", error);
@@ -21,7 +21,7 @@ export default function DashboardForAdmin() {
 
   const handleDelete = async (bookId: string) => {
     try {
-      await axios.delete(`https://librarymanagementsystem-6aca.onrender.com/books/delete/${bookId}`);
+      await axios.delete(`http://localhost:3030/books/delete/${bookId}`);
       setBooks(books.filter((book) => book._id !== bookId));
     } catch (error) {
       console.error("Error deleting book:", error);
@@ -39,7 +39,10 @@ export default function DashboardForAdmin() {
           <button
             type="button"
             className="bg-red-800 text-white sm:hidden border-black border-2 px-3 py-1 rounded-lg text-sm cursor-pointer"
-            onClick={() => navigate("/admin/login")}
+            onClick={() => {
+              navigate("/admin/login");
+              localStorage.removeItem("token");
+            }}
           >
             Logout
           </button>
@@ -64,7 +67,10 @@ export default function DashboardForAdmin() {
           <button
             type="button"
             className="bg-red-700 text-white hidden sm:block border-black border-2 px-3 py-1 rounded-lg text-sm cursor-pointer"
-            onClick={() => navigate("/admin/login")}
+            onClick={() => {
+              navigate("/admin/login");
+              localStorage.removeItem("token");
+            }}
           >
             Logout
           </button>
