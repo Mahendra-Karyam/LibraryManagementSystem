@@ -14,13 +14,15 @@ export default function AdminLoginPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "https://librarymanagementsystem-6aca.onrender.com/admin/login",
+        "http://localhost:3030/admin/login",
         { email, password },
         {
           headers: { "Content-Type": "application/json" },
         }
       );
       if (res.status === 200 || res.status === 201) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("role", "admin");
         navigate("/admin/dashboard");
         setEmail("");
         setPassword("");
