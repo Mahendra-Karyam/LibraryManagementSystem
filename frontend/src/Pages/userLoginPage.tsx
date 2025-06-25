@@ -30,7 +30,7 @@ export default function UserLoginPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:3030/user/login",
+        "https://librarymanagementsystem-6aca.onrender.com/user/login",
         { email, password },
         {
           headers: { "Content-Type": "application/json" },
@@ -64,7 +64,7 @@ export default function UserLoginPage() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:3030/user/signup",
+        "https://librarymanagementsystem-6aca.onrender.com/user/signup",
         { userName, email, password },
         {
           headers: { "Content-Type": "application/json" },
