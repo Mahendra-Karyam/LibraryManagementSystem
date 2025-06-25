@@ -8,6 +8,7 @@ import DashBoradForAdmin from "./Pages/dashboardForAdmin.tsx";
 import AddBook from "./Pages/addBook.tsx";
 import UpdateBook from "./Pages/updateBook.tsx";
 import ProtectedRoute from "./ProtectedRoute.tsx";
+import NotFoundPage from "./Pages/NotFoundPage.tsx";
 export default function App() {
   return (
     <Router>
