@@ -16,11 +16,28 @@ export default function App() {
         <Route path="/" element={<WelcomePage />} />
         <Route path="/user/login" element={<UserLoginPage />} />
         <Route path="/user/signup" element={<UserLoginPage />} />
+
+        {/*
+          🔐 ProtectedRoute is used to protect pages like Dashboard, AddBook, etc.
+          ✅ It checks:
+            - If the user is logged in (token)
+            - If the user has the right role (admin or user)
+
+          📦 Inside <ProtectedRoute> is a page like <Dashboard />
+          👉 That page is called "children"
+
+          If everything is okay → it shows the page (children)
+          If not → it redirects to the login page from your ProtectedRoute component, you wrote lik this: return <Navigate to="/admin/login" /> or return <Navigate to="/user/login" />
+        */}
         <Route
           path="/user/availablebooks"
           element={
             <ProtectedRoute>
               <AvailableBooksForUser />
+<<<<<<< HEAD
+=======
+              {/*👉 <AvailableBooksForUser /> is the children of <ProtectedRoute>.*/}
+>>>>>>> b7165c1 (Updated)
             </ProtectedRoute>
           }
         />
@@ -30,6 +47,10 @@ export default function App() {
           element={
             <ProtectedRoute>
               <DashBoradForAdmin />
+<<<<<<< HEAD
+=======
+              {/*👉 <DashBoradForAdmin /> is the children of <ProtectedRoute>.*/}
+>>>>>>> b7165c1 (Updated)
             </ProtectedRoute>
           }
         />
@@ -38,6 +59,10 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AddBook />
+<<<<<<< HEAD
+=======
+              {/*👉 <AddBook /> is the children of <ProtectedRoute>.*/}
+>>>>>>> b7165c1 (Updated)
             </ProtectedRoute>
           }
         />
@@ -45,10 +70,19 @@ export default function App() {
           path="/admin/dashboard/updatebook/:id"
           element={
             <ProtectedRoute>
+<<<<<<< HEAD
               <UpdateBook />
             </ProtectedRoute>
           }
         />
+=======
+              <UpdateBook />{" "}
+              {/*👉 <UpdateBook /> is the children of <ProtectedRoute>.*/}
+            </ProtectedRoute>
+          }
+        />
+
+>>>>>>> b7165c1 (Updated)
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>

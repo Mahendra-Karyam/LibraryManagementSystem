@@ -104,39 +104,39 @@ export default function UserLoginPage() {
     <>
       <div
         style={{ backgroundImage: `url(${libraryImage})` }}
-        className="h-screen w-screen relative bg-cover bg-center flex flex-col items-center justify-center"
+        className="h-screen w-screen relative bg-cover bg-center flex items-center justify-center"
       >
         {/* ⛔️ THIS is the overlay making background blackish */}
         <div className="absolute inset-0 bg-black opacity-40 z-0"></div>
 
-        <button
-          className="mb-4 bg-white border-black border-2 rounded-lg px-3 py-1 cursor-pointer relative"
-          onClick={() => {
-            navigate("/");
-          }}
-        >
-          Home
-        </button>
-        <form
-          onSubmit={mode == "login" ? handleLoginSubmit : handleSignUpSubmit}
-          className="relative z-10 flex items-center justify-center flex-col"
-        >
-          <div className="w-72 border-[3px] rounded-md border-amber-950 bg-white p-4 flex flex-col justify-between h-[400px]">
-            <h1 className="text-center font-bold text-2xl">
-              {mode === "login" ? "Login" : "SignUp"} Form
-            </h1>
+        <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border-2 border-amber-950 bg-white/95 p-6 shadow-[0_0_30px_rgba(0,0,0,0.35)] min-h-[520px]">
+          <form
+            onSubmit={mode === "login" ? handleLoginSubmit : handleSignUpSubmit}
+            className="flex h-full flex-col justify-between gap-6"
+          >
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-slate-900">
+                {mode === "login" ? "User Login" : "User Signup"}
+              </h1>
+              <p className="text-sm text-slate-600 mt-2">
+                {mode === "login"
+                  ? "Access your library account with email and password."
+                  : "Create a new user account to borrow books."
+                }
+              </p>
+            </div>
 
-            <div className="flex border-2 border-gray-200 rounded overflow-hidden h-10 mt-5 mb-4">
+            <div className="flex border-2 border-gray-200 rounded-full overflow-hidden h-12">
               <div
                 onClick={() => {
                   setMode("login");
                   setMessage("");
                   navigate("/user/login");
                 }}
-                className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-medium ${
+                className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
                   mode === "login"
                     ? "bg-blue-900 text-cyan-100"
-                    : "bg-white text-black"
+                    : "bg-white text-slate-700 hover:bg-slate-100"
                 }`}
               >
                 Login
@@ -147,116 +147,96 @@ export default function UserLoginPage() {
                   setMessage("");
                   navigate("/user/signup");
                 }}
-                className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-medium ${
+                className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
                   mode === "signup"
                     ? "bg-blue-900 text-cyan-100"
-                    : "bg-white text-black"
+                    : "bg-white text-slate-700 hover:bg-slate-100"
                 }`}
               >
                 Signup
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-between mt-4 mb-2">
-              {mode === "login" ? (
-                <>
-                  <div className="flex flex-col justify-between h-full">
-                    <div className="flex flex-col gap-4">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email"
-                        required
-                        className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                      />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                        required
-                        className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full mt-4 bg-blue-900 text-cyan-100 px-3 py-1 rounded cursor-pointer"
-                    >
-                      Login
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-col justify-between h-full">
-                    <div className="flex flex-col gap-4">
-                      <input
-                        type="text"
-                        value={userName}
-                        onChange={(e) => setUserName(e.target.value)}
-                        placeholder="Name"
-                        required
-                        className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                      />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email"
-                        required
-                        className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                      />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                        required
-                        className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full mt-4 bg-blue-900 text-cyan-100 px-3 py-1 rounded cursor-pointer"
-                    >
-                      Signup
-                    </button>
-                  </div>
-                </>
+            <div className="flex flex-col gap-4">
+              {mode === "signup" && (
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Name"
+                  required
+                  className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+                />
               )}
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                required
+                className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+                className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+              />
+
+              <button
+                type="submit"
+                className="w-full bg-blue-900 text-cyan-100 px-4 py-3 rounded-xl font-semibold hover:bg-blue-800 transition"
+              >
+                {mode === "login" ? "Login" : "Signup"}
+              </button>
             </div>
 
-            <p className="text-sm text-center mt-2">
-              {mode === "login" ? (
-                <>
-                  Don&apos;t have an account?{" "}
-                  <span
-                    onClick={() => setMode("signup")}
-                    className="text-blue-900 font-semibold cursor-pointer underline"
-                  >
-                    SignUp
-                  </span>
-                </>
-              ) : (
-                <>
-                  Already have an account?{" "}
-                  <span
-                    onClick={() => setMode("login")}
-                    className="text-blue-900 font-semibold cursor-pointer underline"
-                  >
-                    Login
-                  </span>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="mt-10 text-red-500 bg-white px-2 rounded-sm text-center">
-            {message && <h1>{message}</h1>}
-          </div>
-        </form>
+            <div className="space-y-3">
+              <p className="text-sm text-center text-slate-600">
+                {mode === "login" ? (
+                  <>
+                    Don&apos;t have an account?{' '}
+                    <span
+                      onClick={() => setMode("signup")}
+                      className="text-blue-900 font-semibold cursor-pointer underline"
+                    >
+                      Sign up
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{' '}
+                    <span
+                      onClick={() => setMode("login")}
+                      className="text-blue-900 font-semibold cursor-pointer underline"
+                    >
+                      Login
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="text-sm font-medium text-slate-600 hover:text-blue-900 transition"
+                >
+                  Back to Home
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {message && (
+            <div className="mt-6 rounded-xl bg-red-100 px-4 py-3 text-center text-sm text-red-700">
+              {message}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
