@@ -1,24 +1,4 @@
-<<<<<<< HEAD
 import { Navigate, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
-
-interface Props {
-  children: ReactNode;
-}
-
-const ProtectedRoute = ({ children }: Props) => {
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
-  const location = useLocation();
-
-  const isAdminRoute = location.pathname.startsWith("/admin");
-
-  // ✅ If no token → redirect
-=======
-import {
-  Navigate, // Lets you redirect the user to another route
-  useLocation, // Gives the current URL path
-} from "react-router-dom";
 import type { ReactNode } from "react";
 
 interface Props {
@@ -46,56 +26,29 @@ Here, <Dashboard /> is passed as "children"
 */
 const ProtectedRoute = ({ children }: Props) => {
   // 🔐 Get token and role from browser's localStorage
-  // localStorage is used to store data even after page refresh
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role"); //e.g., "user" or "admin"
-  const location = useLocation(); //It gives you the current URL info
-
-  /*
-  location is an object like this:
-    {
-      pathname: "/admin/dashboard",  // current path
-      search: "?q=books",            // query string if any
-      hash: "#section",              // URL fragment
-      state: null                    // optional data passed via navigation
-      key: "randomKey"               // unique ID for the location
-    }
-  */
+  const role = localStorage.getItem("role");
+  const location = useLocation();
 
   // ✅ Check if current path starts with "/admin"
   const isAdminRoute = location.pathname.startsWith("/admin");
 
-  // ⛔ If there's no token, user is not logged in → send them to the login page.
->>>>>>> b7165c1 (Updated)
+  // ⛔ If there's no token, user is not logged in
   if (!token) {
     return <Navigate to={isAdminRoute ? "/admin/login" : "/user/login"} />;
   }
 
-<<<<<<< HEAD
-  // ❌ If trying to access admin but not an admin
-=======
-  // ⛔ If it's an admin page, but the user is not an admin, redirect to admin login.
->>>>>>> b7165c1 (Updated)
+  // ⛔ If it's an admin page, but the user is not an admin
   if (isAdminRoute && role !== "admin") {
     return <Navigate to="/admin/login" />;
   }
 
-<<<<<<< HEAD
-  // ❌ If trying to access user route but not a user
-=======
-  // ⛔ If it's a user page, but the user is not a user, redirect to user login.
->>>>>>> b7165c1 (Updated)
+  // ⛔ If it's a user page, but the user is not a user
   if (!isAdminRoute && role !== "user") {
     return <Navigate to="/user/login" />;
   }
 
-<<<<<<< HEAD
-  // ✅ Valid token and role → allow access
-=======
-  // ✅ All checks passed → now show the actual page/component
-  // children contains whatever was wrapped inside <ProtectedRoute> (like <DashboardForAdmin />)
-  // So return children will display that protected component
->>>>>>> b7165c1 (Updated)
+  // ✅ All checks passed → render the protected page
   return children;
 };
 

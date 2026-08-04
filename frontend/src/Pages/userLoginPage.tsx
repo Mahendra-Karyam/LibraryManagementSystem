@@ -109,10 +109,10 @@ export default function UserLoginPage() {
         {/* ⛔️ THIS is the overlay making background blackish */}
         <div className="absolute inset-0 bg-black opacity-40 z-0"></div>
 
-        <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border-2 border-amber-950 bg-white/95 p-6 shadow-[0_0_30px_rgba(0,0,0,0.35)] min-h-[520px]">
+        <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border-2 border-amber-950 bg-white/95 p-6 shadow-[0_0_30px_rgba(0,0,0,0.35)] min-h-[600px] flex flex-col">
           <form
             onSubmit={mode === "login" ? handleLoginSubmit : handleSignUpSubmit}
-            className="flex h-full flex-col justify-between gap-6"
+            className="flex flex-1 flex-col gap-6"
           >
             <div className="text-center">
               <h1 className="text-3xl font-bold text-slate-900">
@@ -138,6 +138,8 @@ export default function UserLoginPage() {
                     ? "bg-blue-900 text-cyan-100"
                     : "bg-white text-slate-700 hover:bg-slate-100"
                 }`}
+                role="button"
+                tabIndex={0}
               >
                 Login
               </div>
@@ -152,22 +154,26 @@ export default function UserLoginPage() {
                     ? "bg-blue-900 text-cyan-100"
                     : "bg-white text-slate-700 hover:bg-slate-100"
                 }`}
+                role="button"
+                tabIndex={0}
               >
                 Signup
               </div>
             </div>
 
             <div className="flex flex-col gap-4">
-              {mode === "signup" && (
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  placeholder="Name"
-                  required
-                  className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
-                />
-              )}
+              <div className="overflow-hidden h-14">
+                {mode === "signup" && (
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="Name"
+                    required
+                    className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400 h-full w-full"
+                  />
+                )}
+              </div>
 
               <input
                 type="email"
@@ -188,13 +194,13 @@ export default function UserLoginPage() {
 
               <button
                 type="submit"
-                className="w-full bg-blue-900 text-cyan-100 px-4 py-3 rounded-xl font-semibold hover:bg-blue-800 transition"
+                className="w-full bg-blue-900 text-cyan-100 px-4 py-3 rounded-xl font-semibold hover:bg-blue-800 transition cursor-pointer"
               >
                 {mode === "login" ? "Login" : "Signup"}
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex flex-col flex-1 justify-end gap-3">
               <p className="text-sm text-center text-slate-600">
                 {mode === "login" ? (
                   <>
@@ -202,6 +208,8 @@ export default function UserLoginPage() {
                     <span
                       onClick={() => setMode("signup")}
                       className="text-blue-900 font-semibold cursor-pointer underline"
+                      role="button"
+                      tabIndex={0}
                     >
                       Sign up
                     </span>
@@ -212,6 +220,8 @@ export default function UserLoginPage() {
                     <span
                       onClick={() => setMode("login")}
                       className="text-blue-900 font-semibold cursor-pointer underline"
+                      role="button"
+                      tabIndex={0}
                     >
                       Login
                     </span>
@@ -223,7 +233,7 @@ export default function UserLoginPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="text-sm font-medium text-slate-600 hover:text-blue-900 transition"
+                  className="text-sm font-medium text-slate-600 hover:text-blue-900 transition cursor-pointer"
                 >
                   Back to Home
                 </button>
@@ -232,7 +242,7 @@ export default function UserLoginPage() {
           </form>
 
           {message && (
-            <div className="mt-6 rounded-xl bg-red-100 px-4 py-3 text-center text-sm text-red-700">
+            <div className="mt-4 rounded-xl bg-red-100 px-4 py-3 text-center text-sm text-red-700 break-words">
               {message}
             </div>
           )}

@@ -27,62 +27,47 @@ export default function App() {
           👉 That page is called "children"
 
           If everything is okay → it shows the page (children)
-          If not → it redirects to the login page from your ProtectedRoute component, you wrote lik this: return <Navigate to="/admin/login" /> or return <Navigate to="/user/login" />
+          If not → it redirects to the login page.
         */}
+
         <Route
           path="/user/availablebooks"
           element={
             <ProtectedRoute>
               <AvailableBooksForUser />
-<<<<<<< HEAD
-=======
-              {/*👉 <AvailableBooksForUser /> is the children of <ProtectedRoute>.*/}
->>>>>>> b7165c1 (Updated)
             </ProtectedRoute>
           }
         />
+
         <Route path="/admin/login" element={<AdminLoginPage />} />
+
         <Route
           path="/admin/dashboard"
           element={
             <ProtectedRoute>
               <DashBoradForAdmin />
-<<<<<<< HEAD
-=======
-              {/*👉 <DashBoradForAdmin /> is the children of <ProtectedRoute>.*/}
->>>>>>> b7165c1 (Updated)
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/admin/dashboard/addbook"
           element={
             <ProtectedRoute>
               <AddBook />
-<<<<<<< HEAD
-=======
-              {/*👉 <AddBook /> is the children of <ProtectedRoute>.*/}
->>>>>>> b7165c1 (Updated)
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/dashboard/updatebook/:id"
-          element={
-            <ProtectedRoute>
-<<<<<<< HEAD
-              <UpdateBook />
-            </ProtectedRoute>
-          }
-        />
-=======
-              <UpdateBook />{" "}
-              {/*👉 <UpdateBook /> is the children of <ProtectedRoute>.*/}
             </ProtectedRoute>
           }
         />
 
->>>>>>> b7165c1 (Updated)
+        <Route
+          path="/admin/dashboard/updatebook/:id"
+          element={
+            <ProtectedRoute>
+              <UpdateBook />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Router>

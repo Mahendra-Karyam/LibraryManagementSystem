@@ -47,57 +47,62 @@ export default function AdminLoginPage() {
     <>
       <div
         style={{ backgroundImage: `url(${libraryImage})` }}
-        className="h-screen w-screen relative bg-cover bg-center flex flex-col items-center justify-center"
+        className="h-screen w-screen relative bg-cover bg-center flex items-center justify-center"
       >
         {/* ⛔️ THIS is the overlay making background blackish */}
         <div className="absolute inset-0 bg-black opacity-40 z-0"></div>
 
-        <button
-          className="mb-4 bg-white border-black border-2 rounded-lg px-3 py-1 cursor-pointer relative"
-          onClick={() => {
-            navigate("/");
-          }}
-        >
-          Home
-        </button>
-        <form
-          onSubmit={handleLoginSubmit}
-          className="relative z-10 flex items-center justify-center flex-col"
-        >
-          <div className="w-72 border-[3px] rounded-md border-amber-950 bg-white p-4 flex flex-col justify-between h-60">
-            <h1 className="text-center font-bold text-2xl">Login Form</h1>
-            <div className="flex-1 flex flex-col justify-between mt-4 mb-2">
-              <div className="flex flex-col justify-between h-full">
-                <div className="flex flex-col gap-4">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email"
-                    required
-                    className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                  />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password"
-                    required
-                    className="outline-none shadow-sm px-2 py-1 border-gray-200 border-2 rounded placeholder:text-red-500"
-                  />
-                </div>
+        <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border-2 border-amber-950 bg-white/95 p-6 shadow-[0_0_30px_rgba(0,0,0,0.35)]">
+          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-slate-900">Admin Login</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                Access the admin dashboard with your email and password.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                required
+                className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                required
+                className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+              />
+
+              <button
+                type="submit"
+                className="w-full bg-blue-900 text-cyan-100 px-4 py-3 rounded-xl font-semibold hover:bg-blue-800 transition cursor-pointer"
+              >
+                Login
+              </button>
+
+              <div className="text-center pt-1">
                 <button
-                  type="submit"
-                  className="w-full mt-4 bg-blue-900 text-cyan-100 px-3 py-1 rounded cursor-pointer"
+                  type="button"
+                  onClick={() => navigate("/")}
+                  className="text-sm font-medium text-slate-600 hover:text-blue-900 transition cursor-pointer"
                 >
-                  Login
+                  Back to Home
                 </button>
               </div>
             </div>
-          </div>
-        </form>
-        <div className="mt-10 text-red-500 bg-white px-2 rounded-sm text-center relative">
-          {message && <h1>{message}</h1>}
+          </form>
+
+          {message && (
+            <div className="mt-6 rounded-xl bg-red-100 px-4 py-3 text-center text-sm text-red-700">
+              {message}
+            </div>
+          )}
         </div>
       </div>
     </>
