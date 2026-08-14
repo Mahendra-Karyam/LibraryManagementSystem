@@ -9,11 +9,9 @@ import AddBook from "./Pages/addBook.tsx";
 import UpdateBook from "./Pages/updateBook.tsx";
 import ProtectedRoute from "./ProtectedRoute.tsx";
 import NotFoundPage from "./Pages/NotFoundPage.tsx";
-import ChatWidget from "./Components/ChatWidget.tsx";
 export default function App() {
   return (
     <Router>
-      <ChatWidget />
       <Routes>
         <Route path="/" element={<WelcomePage />} />
         <Route path="/user/login" element={<UserLoginPage />} />
