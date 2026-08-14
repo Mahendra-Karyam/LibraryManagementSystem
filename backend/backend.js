@@ -29,6 +29,8 @@ const deleteBook = require("./Accounts/deleteBook.js");
 
 const authenticateToken = require("./Middlewares/auth.js");
 
+const chatbotRoute = require("./Routes/chatbotRoute.js");
+
 userDBConnection;
 booksDBConnection;
 
@@ -36,6 +38,8 @@ booksDBConnection;
 app.get("/", (req, res) => {
     res.send("Server is running");
 });
+
+app.use("/chatbot", chatbotRoute);
 
 app.post("/user/signup", signupUser);
 app.post("/user/login", loginUser);
