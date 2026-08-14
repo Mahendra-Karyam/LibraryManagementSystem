@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 import axios from "axios";
 
-// Backend base URL. Uses VITE_API_BASE_URL from a .env.local file when present
-// (e.g. "http://localhost:3030" for local development), otherwise falls back
-// to the deployed production backend.
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://librarymanagementsystem-6aca.onrender.com";
+// Same backend base URL used everywhere else in this project (see
+// availableBooksForUser.tsx, addBook.tsx, etc.) — kept consistent with
+// the rest of the app rather than introducing a different pattern just
+// for this component.
+const API_BASE_URL = "https://librarymanagementsystem-6aca.onrender.com";
 
 interface ChatMessage {
   role: "user" | "model";
@@ -24,6 +24,46 @@ const STARTER_QUESTIONS = [
   "Is there a late fee?",
   "How do I add a book as admin?",
 ];
+
+// Turns **bold** and *italic* markdown segments within a single line into
+// real <strong>/<em> elements instead of showing the raw asterisks.
+function renderInlineMarkdown(line: string) {
+  const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={idx}>{part.slice(1, -1)}</em>;
+    }
+    return <Fragment key={idx}>{part}</Fragment>;
+  });
+}
+
+// Lightweight line-based markdown rendering for chat bubbles — handles
+// bold/italic text and numbered/bulleted list lines without pulling in a
+// full markdown library for what is otherwise plain chat text.
+function renderMessageText(text: string) {
+  const lines = text.split("\n");
+
+  return lines.map((line, i) => {
+    const listMatch = line.match(/^(\d+\.|[-*])\s+(.*)$/);
+    if (listMatch) {
+      const [, marker, rest] = listMatch;
+      return (
+        <div key={i} className="flex gap-1.5">
+          <span className="shrink-0">{marker.match(/\d/) ? marker : "•"}</span>
+          <span>{renderInlineMarkdown(rest)}</span>
+        </div>
+      );
+    }
+    if (line.trim() === "") {
+      return <div key={i} className="h-2" />;
+    }
+    return <div key={i}>{renderInlineMarkdown(line)}</div>;
+  });
+}
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -130,13 +170,13 @@ export default function ChatWidget() {
                 }`}
               >
                 <div
-                  className={`max-w-[80%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+                  className={`max-w-[80%] px-3 py-2 rounded-lg text-sm space-y-0.5 ${
                     m.role === "user"
                       ? "bg-teal-700 text-white rounded-br-none"
                       : "bg-white border border-teal-800 text-teal-900 rounded-bl-none"
                   }`}
                 >
-                  {m.text}
+                  {renderMessageText(m.text)}
                 </div>
               </div>
             ))}
