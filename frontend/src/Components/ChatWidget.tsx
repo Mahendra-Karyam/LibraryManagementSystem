@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, Fragment } from "react";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
 
 // Same backend base URL used everywhere else in this project (see
@@ -18,6 +19,11 @@ interface Faq {
   answer: string;
 }
 
+const WELCOME_MESSAGE: ChatMessage = {
+  role: "model",
+  text: "Hello! Welcome to the Library. How can I help you today?\n\nI can assist with questions about:\n* Searching and browsing books\n* Borrowing and returning books\n* Reading a borrowed book's PDF\n* Managing your account\n\nLet me know what you need help with!",
+};
+
 const STARTER_QUESTIONS = [
   "How do I borrow a book?",
   "How do I return a book?",
@@ -25,56 +31,28 @@ const STARTER_QUESTIONS = [
   "How do I add a book as admin?",
 ];
 
-// Turns **bold** and *italic* markdown segments within a single line into
-// real <strong>/<em> elements instead of showing the raw asterisks.
-function renderInlineMarkdown(line: string) {
-  const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
-
-  return parts.map((part, idx) => {
+// Gemini replies in light Markdown (mainly **bold**). Rather than pulling in a
+// full markdown library or using dangerouslySetInnerHTML (risky with AI text),
+// this splits on **bold** markers and renders them as real <strong> elements,
+// leaving everything else — including list markers like "*" or "1." — as
+// plain text, same as the source text.
+function renderFormattedText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={idx}>{part.slice(2, -2)}</strong>;
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
     }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return <em key={idx}>{part.slice(1, -1)}</em>;
-    }
-    return <Fragment key={idx}>{part}</Fragment>;
-  });
-}
-
-// Lightweight line-based markdown rendering for chat bubbles — handles
-// bold/italic text and numbered/bulleted list lines without pulling in a
-// full markdown library for what is otherwise plain chat text.
-function renderMessageText(text: string) {
-  const lines = text.split("\n");
-
-  return lines.map((line, i) => {
-    const listMatch = line.match(/^(\d+\.|[-*])\s+(.*)$/);
-    if (listMatch) {
-      const [, marker, rest] = listMatch;
-      return (
-        <div key={i} className="flex gap-1.5">
-          <span className="shrink-0">{marker.match(/\d/) ? marker : "•"}</span>
-          <span>{renderInlineMarkdown(rest)}</span>
-        </div>
-      );
-    }
-    if (line.trim() === "") {
-      return <div key={i} className="h-2" />;
-    }
-    return <div key={i}>{renderInlineMarkdown(line)}</div>;
+    return <Fragment key={i}>{part}</Fragment>;
   });
 }
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "model",
-      text: "Hi! 👋 I'm your Library Help Assistant. Ask me anything about borrowing, returning, searching, or managing books on this site.",
-    },
-  ]);
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -89,102 +67,126 @@ export default function ChatWidget() {
   }, []);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, isOpen]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, open]);
 
   const sendMessage = async (textOverride?: string) => {
-    const text = (textOverride ?? input).trim();
-    if (!text || isSending) return;
+    const trimmed = (textOverride ?? input).trim();
+    if (!trimmed || sending) return;
 
-    const newMessages: ChatMessage[] = [...messages, { role: "user", text }];
-    setMessages(newMessages);
+    const userMessage: ChatMessage = { role: "user", text: trimmed };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput("");
-    setIsSending(true);
+    setError("");
+    setSending(true);
 
     try {
-      // Send the conversation so far (minus the very first greeting) as history
-      const history = newMessages.slice(0, -1).slice(1);
+      const history = nextMessages
+        .slice(0, -1)
+        .filter((m) => m !== WELCOME_MESSAGE);
 
-      const res = await axios.post(`${API_BASE_URL}/chatbot/ask`, {
-        message: text,
-        history,
-      });
+      // Send the logged-in user's token (if any) so the backend can look up
+      // their own borrowed books for personalized answers — and the current
+      // route so the assistant knows what page they're looking at. Neither
+      // is required: an anonymous/logged-out visitor still gets general help.
+      const token = localStorage.getItem("token");
+
+      const res = await axios.post(
+        `${API_BASE_URL}/chatbot/ask`,
+        {
+          message: trimmed,
+          history,
+          currentPage: location.pathname,
+        },
+        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+      );
 
       setMessages((prev) => [
         ...prev,
         { role: "model", text: res.data.reply },
       ]);
-    } catch (error) {
-      console.error("Chatbot request failed:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "model",
-          text: "Sorry, something went wrong reaching the help assistant. Please try again in a moment.",
-        },
-      ]);
+    } catch (err) {
+      console.error("Chatbot request failed:", err);
+      setError("Something went wrong reaching the help assistant. Please try again.");
+      setMessages(messages);
     } finally {
-      setIsSending(false);
+      setSending(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendMessage();
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage();
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 font-['Times_New_Roman']">
-      {isOpen && (
-        <div className="mb-3 w-[92vw] max-w-[360px] h-[70vh] max-h-[520px] bg-white border-2 border-teal-800 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+    <>
+      {/* Toggle button — independently fixed to the corner, same size and
+          position whether the panel is open or closed, so it never shifts. */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        aria-label={open ? "Close help chat" : "Open help chat"}
+        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full bg-teal-700 hover:bg-teal-800
+          text-white shadow-lg flex items-center justify-center transition-transform hover:scale-105 cursor-pointer"
+      >
+        {open ? (
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+            <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+            <path
+              d="M4 5h16v11H8l-4 4V5z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </button>
+
+      {/* Chat panel — independently fixed, positioned above the button. */}
+      {open && (
+        <div
+          className="fixed bottom-24 right-5 z-50 w-[92vw] max-w-sm h-[70vh] max-h-[520px]
+            bg-white border border-gray-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        >
           {/* Header */}
-          <div className="bg-teal-900 text-white px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📚</span>
-              <span className="font-semibold">Library Help Assistant</span>
-            </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              aria-label="Close chat"
-              className="text-white hover:text-gray-200 text-xl leading-none cursor-pointer"
-            >
-              ×
-            </button>
+          <div className="px-4 py-3 bg-teal-700 text-white shrink-0">
+            <p className="font-semibold text-sm">Library Help Assistant</p>
+            <p className="text-xs text-teal-100">Ask me anything about the app</p>
           </div>
 
           {/* Messages */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-gray-50"
+            className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50"
           >
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`flex ${
-                  m.role === "user" ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] px-3 py-2 rounded-lg text-sm space-y-0.5 ${
-                    m.role === "user"
-                      ? "bg-teal-700 text-white rounded-br-none"
-                      : "bg-white border border-teal-800 text-teal-900 rounded-bl-none"
-                  }`}
+                  className={`max-w-[85%] text-sm px-3 py-2 rounded-2xl whitespace-pre-wrap break-words
+                    ${
+                      m.role === "user"
+                        ? "bg-teal-700 text-white rounded-br-sm"
+                        : "bg-white border border-gray-200 text-gray-700 rounded-bl-sm"
+                    }`}
                 >
-                  {renderMessageText(m.text)}
+                  {renderFormattedText(m.text)}
                 </div>
               </div>
             ))}
 
-            {isSending && (
+            {sending && (
               <div className="flex justify-start">
-                <div className="max-w-[80%] px-3 py-2 rounded-lg text-sm bg-white border border-teal-800 text-teal-900 rounded-bl-none">
-                  Typing...
+                <div className="bg-white border border-gray-200 text-gray-400 text-sm px-3 py-2 rounded-2xl rounded-bl-sm">
+                  Typing…
                 </div>
               </div>
             )}
@@ -199,7 +201,7 @@ export default function ChatWidget() {
                   <button
                     key={q}
                     onClick={() => sendMessage(q)}
-                    className="text-xs border border-teal-800 text-teal-900 rounded-full px-3 py-1 hover:bg-teal-800 hover:text-white transition cursor-pointer"
+                    className="text-xs border border-gray-300 text-gray-600 rounded-full px-3 py-1 hover:bg-teal-700 hover:text-white hover:border-teal-700 transition cursor-pointer"
                   >
                     {q}
                   </button>
@@ -208,36 +210,36 @@ export default function ChatWidget() {
             )}
           </div>
 
+          {error && <p className="px-3 pt-1 text-xs text-red-500 shrink-0">{error}</p>}
+
           {/* Input */}
-          <div className="border-t-2 border-teal-800 p-2 flex gap-2 bg-white">
+          <form
+            onSubmit={handleSubmit}
+            className="p-2.5 border-t border-gray-200 flex items-center gap-2 shrink-0"
+          >
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question..."
-              disabled={isSending}
-              className="flex-1 text-sm border-2 border-teal-800 rounded px-2 py-1 outline-none text-teal-900"
+              placeholder="Ask a question…"
+              disabled={sending}
+              className="flex-1 border border-gray-300 rounded-full px-3.5 py-2 text-sm
+                focus:outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-500 disabled:opacity-50"
             />
             <button
-              onClick={() => sendMessage()}
-              disabled={isSending || !input.trim()}
-              className="bg-teal-700 disabled:bg-gray-300 text-white text-sm rounded px-3 py-1 cursor-pointer"
+              type="submit"
+              disabled={sending || !input.trim()}
+              className="shrink-0 h-9 w-9 flex items-center justify-center rounded-full
+                bg-teal-700 hover:bg-teal-800 text-white disabled:opacity-40 transition-colors cursor-pointer"
+              aria-label="Send"
             >
-              Send
+              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none">
+                <path d="M3 10h13M10 4l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
-          </div>
+          </form>
         </div>
       )}
-
-      {/* Floating toggle bubble */}
-      <button
-        onClick={() => setIsOpen((prev) => !prev)}
-        aria-label="Toggle help chat"
-        className="w-14 h-14 rounded-full bg-teal-800 text-white text-2xl shadow-lg flex items-center justify-center hover:bg-teal-700 transition cursor-pointer"
-      >
-        {isOpen ? "×" : "💬"}
-      </button>
-    </div>
+    </>
   );
 }

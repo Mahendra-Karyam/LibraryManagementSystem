@@ -1,4 +1,5 @@
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 const { GoogleGenAI } = require("@google/genai");
 const faqData = require("../Data/faqData.js");
 const { Book } = require("../Databases/booksDatabase.js");
@@ -23,6 +24,86 @@ if (GEMINI_API_KEY) {
 const faqContext = faqData
   .map((item) => `Q: ${item.question}\nA: ${item.answer}`)
   .join("\n\n");
+
+// Server-side allowlist mapping route paths to a plain description. The
+// frontend only ever sends the raw pathname (e.g. "/user/dashboard"), and
+// we translate it here — this avoids trusting arbitrary free text from the
+// client for something that gets fed into the AI prompt.
+const PAGE_DESCRIPTIONS = {
+  "/": "the welcome/landing page",
+  "/user/login": "the user login page",
+  "/user/signup": "the user sign-up page",
+  "/user/availablebooks": "the Available Books page (browsing, searching, borrowing, and returning books)",
+  "/admin/login": "the admin login page",
+  "/admin/dashboard": "the Admin Dashboard (overview of all books)",
+  "/admin/dashboard/addbook": "the Add Book page (admin)",
+};
+
+function describeCurrentPage(pathname) {
+  if (typeof pathname !== "string") return "an unspecified page";
+  if (PAGE_DESCRIPTIONS[pathname]) return PAGE_DESCRIPTIONS[pathname];
+  // Update Book route includes a dynamic book id, e.g. /admin/dashboard/updatebook/64f1...
+  if (pathname.startsWith("/admin/dashboard/updatebook")) {
+    return "the Update Book page (admin, editing a specific book)";
+  }
+  return "a page on the site";
+}
+
+// Reads the Authorization: Bearer <token> header (if present) and decodes
+// it to figure out who's asking — a logged-in user, an admin, or nobody
+// (anonymous). Never throws — an invalid/missing token just means anonymous.
+function identifyRequester(req) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return { role: "anonymous" };
+
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    if (decoded.role === "admin") {
+      return { role: "admin", email: decoded.email };
+    }
+    if (decoded.userName) {
+      return { role: "user", userName: decoded.userName, email: decoded.email };
+    }
+    return { role: "anonymous" };
+  } catch {
+    return { role: "anonymous" };
+  }
+}
+
+// Builds a short paragraph telling the model who it's talking to, without
+// ever exposing other users' data. Admins get no personal borrowing info
+// (they don't borrow books); regular users get only THEIR OWN borrowed
+// books, looked up fresh from the database.
+async function buildUserContext(requester) {
+  if (requester.role === "admin") {
+    return `The current visitor is logged in as an ADMIN. You may help them with adding, updating, or deleting books, but you have no personal borrowing history to report since admins don't borrow books.`;
+  }
+
+  if (requester.role === "user") {
+    try {
+      const borrowed = await Book.find(
+        { BorrowerName: requester.userName },
+        "Title Author Genre"
+      ).lean();
+
+      if (!borrowed.length) {
+        return `The current visitor is logged in as "${requester.userName}". They have no books currently borrowed.`;
+      }
+
+      const rows = borrowed
+        .map((b) => `- "${b.Title}" by ${b.Author} (${b.Genre})`)
+        .join("\n");
+
+      return `The current visitor is logged in as "${requester.userName}". They currently have these books borrowed:\n${rows}`;
+    } catch (err) {
+      console.error("Failed to load user's borrowed books for chatbot context:", err);
+      return `The current visitor is logged in as "${requester.userName}", but their borrowed-books list couldn't be loaded right now — don't guess at what they have borrowed.`;
+    }
+  }
+
+  return `The current visitor is NOT logged in (anonymous). Encourage them to sign up or log in if their question requires an account.`;
+}
 
 // Fetches the current catalog from MongoDB and formats it compactly for the
 // model. Deliberately excludes BorrowerName/BorrowedDate/PDFLink — the
@@ -60,10 +141,10 @@ async function buildCatalogContext() {
   }
 }
 
-function buildSystemPrompt(catalogContext) {
+function buildSystemPrompt(catalogContext, userContext, pageDescription) {
   return `You are the in-app Help Assistant for a Library Management System website built with React and Express/MongoDB.
 
-Your job: help users who are stuck while using THIS website, and answer questions about the real book catalog below. Do not invent features that aren't listed (e.g. do NOT mention due dates, late fees, reservations, wishlists, or multiple-copy borrowing, because none of those exist in this system).
+Your job: help users who are stuck while using THIS website, answer questions about the real book catalog below, and give personalized help based on who's asking and what page they're on. Do not invent features that aren't listed (e.g. do NOT mention due dates, late fees, reservations, wishlists, or multiple-copy borrowing, because none of those exist in this system).
 
 Known facts about this system:
 - Roles: normal User and Admin (Admin login is separate and restricted).
@@ -77,10 +158,16 @@ ${faqContext}
 
 ${catalogContext}
 
+Who you're talking to right now:
+${userContext}
+
+They are currently viewing: ${pageDescription}.
+
 Guidelines:
 - Keep answers short, friendly, and specific to this website (2-4 sentences typically).
 - You DO have live access to the book catalog above — use it to answer questions like "do you have any fantasy books" or "is [title] available". Only say you don't know if the book genuinely isn't in the list above.
-- Never reveal who currently has a book borrowed (no borrower names) — you only know whether a book is "Available" or "Currently borrowed".
+- You know the current visitor's own borrowed books (if logged in as a user) — use that to answer things like "what have I borrowed" or "when did I take out X" personally and directly. Never reveal OTHER users' borrowed books or names — you only know the current visitor's own list and each book's general Available/Currently-borrowed status.
+- Use the "currently viewing" info to tailor guidance — e.g. if they're on the Admin Dashboard and ask "how do I add something", point them to the Add Book button right there rather than generic navigation instructions.
 - If a user asks about a feature that doesn't exist in this system, politely say it isn't available rather than guessing.
 - If you genuinely don't know, say so and suggest they contact the site admin.`;
 }
@@ -91,7 +178,7 @@ Guidelines:
  */
 const askChatbot = async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, currentPage } = req.body;
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
@@ -99,6 +186,8 @@ const askChatbot = async (req, res) => {
         message: "Please provide a question in the 'message' field.",
       });
     }
+
+    const requester = identifyRequester(req);
 
     // If no API key is configured, fall back to simple FAQ keyword matching
     // so the widget still works (with reduced smarts) before setup is done.
@@ -120,12 +209,18 @@ const askChatbot = async (req, res) => {
           .map((h) => ({ role: h.role, parts: [{ text: h.text }] }))
       : [];
 
-    const catalogContext = await buildCatalogContext();
+    const [catalogContext, userContext] = await Promise.all([
+      buildCatalogContext(),
+      buildUserContext(requester),
+    ]);
+    const pageDescription = describeCurrentPage(currentPage);
 
     const chat = ai.chats.create({
       model: GEMINI_MODEL,
       history: formattedHistory,
-      config: { systemInstruction: buildSystemPrompt(catalogContext) },
+      config: {
+        systemInstruction: buildSystemPrompt(catalogContext, userContext, pageDescription),
+      },
     });
 
     const result = await chat.sendMessage({ message });
