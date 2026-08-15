@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../api/axios.js";
 
@@ -33,7 +33,9 @@ function renderFormattedText(text) {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
     }
-    return <Fragment key={i}>{part}</Fragment>;
+    // Plain text segments don't need a wrapper — bare strings render fine
+    // directly in a React children array, no Fragment/key required.
+    return part;
   });
 }
 
