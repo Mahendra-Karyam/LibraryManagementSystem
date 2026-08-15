@@ -21,10 +21,13 @@
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@tailwindcss/cli": "^4.1.10",
+<<<<<<< HEAD
     "@types/estree": "^1.0.8",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@types/react-router-dom": "^5.3.3",
+=======
+>>>>>>> feb40ec (Update code)
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.25.0",
@@ -32,8 +35,11 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "postcss": "^8.5.5",
+<<<<<<< HEAD
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
+=======
+>>>>>>> feb40ec (Update code)
     "vite": "^6.3.5"
   }
 }

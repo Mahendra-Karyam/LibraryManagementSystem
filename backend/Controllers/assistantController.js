@@ -1,0 +1,249 @@
+const jwt = require("jsonwebtoken");
+const { HELP_KNOWLEDGE_BASE, QUICK_QUESTIONS } = require("../Data/helpKnowledgeBase.js");
+const { Book } = require("../Databases/booksDatabase.js");
+const { ai, answerHelpQuestion } = require("../Utils/aiClient.js");
+
+// Cap history length sent to the model to keep prompts small and cheap —
+// only the last few turns are needed for reasonable conversational context.
+// (Same idea as MAX_HISTORY_TURNS in the Resume Matcher project's assistantController.js.)
+const MAX_HISTORY_TURNS = 8;
+
+// Safety cap so a very large catalog never blows up the prompt size / cost.
+// Well beyond what a typical student/demo library project would have.
+const MAX_BOOKS_IN_CONTEXT = 300;
+
+// Server-side allowlist mapping route paths to a plain description. The
+// frontend only ever sends the raw pathname (e.g. "/user/dashboard"), and
+// we translate it here — this avoids trusting arbitrary free text from the
+// client for something that gets fed into the AI prompt.
+const PAGE_DESCRIPTIONS = {
+  "/": "the welcome/landing page",
+  "/user/login": "the user login page",
+  "/user/signup": "the user sign-up page",
+  "/user/availablebooks": "the Available Books page (browsing, searching, borrowing, and returning books)",
+  "/admin/login": "the admin login page",
+  "/admin/dashboard": "the Admin Dashboard (overview of all books)",
+  "/admin/dashboard/addbook": "the Add Book page (admin)",
+};
+
+function describeCurrentPage(pathname) {
+  if (typeof pathname !== "string") return "an unspecified page";
+  if (PAGE_DESCRIPTIONS[pathname]) return PAGE_DESCRIPTIONS[pathname];
+  // Update Book route includes a dynamic book id, e.g. /admin/dashboard/updatebook/64f1...
+  if (pathname.startsWith("/admin/dashboard/updatebook")) {
+    return "the Update Book page (admin, editing a specific book)";
+  }
+  return "a page on the site";
+}
+
+// Reads the Authorization: Bearer <token> header (if present) and decodes
+// it to figure out who's asking — a logged-in user, an admin, or nobody
+// (anonymous). Never throws — an invalid/missing token just means anonymous.
+function identifyRequester(req) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) return { role: "anonymous" };
+
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    if (decoded.role === "admin") {
+      return { role: "admin", email: decoded.email };
+    }
+    if (decoded.userName) {
+      return { role: "user", userName: decoded.userName, email: decoded.email };
+    }
+    return { role: "anonymous" };
+  } catch {
+    return { role: "anonymous" };
+  }
+}
+
+// Builds a short paragraph telling the model who it's talking to, without
+// ever exposing other users' data. Admins get no personal borrowing info
+// (they don't borrow books); regular users get only THEIR OWN borrowed
+// books, looked up fresh from the database.
+async function buildUserContext(requester) {
+  if (requester.role === "admin") {
+    return `The current visitor is logged in as an ADMIN. You may help them with adding, updating, or deleting books, but you have no personal borrowing history to report since admins don't borrow books.`;
+  }
+
+  if (requester.role === "user") {
+    try {
+      const borrowed = await Book.find(
+        { BorrowerName: requester.userName },
+        "Title Author Genre"
+      ).lean();
+
+      if (!borrowed.length) {
+        return `The current visitor is logged in as "${requester.userName}". They have no books currently borrowed.`;
+      }
+
+      const rows = borrowed
+        .map((b) => `- "${b.Title}" by ${b.Author} (${b.Genre})`)
+        .join("\n");
+
+      return `The current visitor is logged in as "${requester.userName}". They currently have these books borrowed:\n${rows}`;
+    } catch (err) {
+      console.error("Failed to load user's borrowed books for chatbot context:", err);
+      return `The current visitor is logged in as "${requester.userName}", but their borrowed-books list couldn't be loaded right now — don't guess at what they have borrowed.`;
+    }
+  }
+
+  return `The current visitor is NOT logged in (anonymous). Encourage them to sign up or log in if their question requires an account.`;
+}
+
+// Fetches the current catalog from MongoDB and formats it compactly for the
+// model. Deliberately excludes BorrowerName/BorrowedDate/PDFLink — the
+// chatbot shouldn't reveal who currently has a book or leak direct file
+// links to users who haven't borrowed it themselves.
+async function buildCatalogContext() {
+  try {
+    const totalCount = await Book.countDocuments();
+    const books = await Book.find({}, "Title Author Genre Availability")
+      .limit(MAX_BOOKS_IN_CONTEXT)
+      .lean();
+
+    if (!books.length) {
+      return "The catalog is currently empty — no books have been added yet.";
+    }
+
+    const rows = books
+      .map(
+        (b) =>
+          `- "${b.Title}" by ${b.Author} | Genre: ${b.Genre} | ${
+            b.Availability === "Borrowed" ? "Currently borrowed" : "Available"
+          }`
+      )
+      .join("\n");
+
+    const truncatedNote =
+      totalCount > books.length
+        ? `\n(Showing ${books.length} of ${totalCount} total books — ask the user to use the search/filter on the Available Books page for the full list.)`
+        : "";
+
+    return `Current book catalog (${totalCount} total book${totalCount === 1 ? "" : "s"}):\n${rows}${truncatedNote}`;
+  } catch (err) {
+    console.error("Failed to load catalog for chatbot context:", err);
+    return "The live book catalog could not be loaded right now — don't guess at specific titles or availability.";
+  }
+}
+
+// System prompt builder. The static product knowledge now lives entirely in
+// Data/helpKnowledgeBase.js (HELP_KNOWLEDGE_BASE) — same single-string shape
+// as the Resume Matcher project's server/utils/aiClient.js usage. This
+// function's only job is to append the live, per-request context (catalog,
+// requester, current page) after that static string.
+function buildSystemPrompt(catalogContext, userContext, pageDescription) {
+  return `${HELP_KNOWLEDGE_BASE}
+
+${catalogContext}
+
+Who you're talking to right now:
+${userContext}
+
+They are currently viewing: ${pageDescription}.
+
+Guidelines for the live context above:
+- You DO have live access to the book catalog above — use it to answer questions like "do you have any fantasy books" or "is [title] available". Only say you don't know if the book genuinely isn't in the list above.
+- You know the current visitor's own borrowed books (if logged in as a user) — use that to answer things like "what have I borrowed" personally and directly. Never reveal OTHER users' borrowed books or names.
+- Use the "currently viewing" info to tailor guidance — e.g. if they're on the Admin Dashboard and ask "how do I add something", point them to the Add Book button right there rather than generic navigation instructions.`;
+}
+
+/**
+ * POST /assistant/chat
+ * body: { message: string, history?: Array<{role: 'user'|'model', text: string}>, currentPage?: string }
+ */
+const chatWithAssistant = async (req, res) => {
+  try {
+    const { message, history, currentPage } = req.body;
+
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a question in the 'message' field.",
+      });
+    }
+
+    const requester = identifyRequester(req);
+
+    // If no API key is configured, fall back to simple FAQ keyword matching
+    // so the widget still works (with reduced smarts) before setup is done.
+    if (!ai) {
+      const fallback = findBestFaqMatch(message);
+      return res.status(200).json({
+        success: true,
+        source: "faq-fallback",
+        reply:
+          fallback ||
+          "I'm not fully set up yet (missing GEMINI_API_KEY on the server), so I can only answer a few basic questions right now. Please try asking about borrowing, returning, or searching for books.",
+      });
+    }
+
+    // Convert simple {role, text} history into the SDK's expected format,
+    // capped to the most recent turns (mirrors Resume Matcher's MAX_HISTORY_TURNS).
+    const formattedHistory = Array.isArray(history)
+      ? history
+          .filter((h) => h && h.text && (h.role === "user" || h.role === "model"))
+          .slice(-MAX_HISTORY_TURNS)
+          .map((h) => ({ role: h.role, parts: [{ text: h.text }] }))
+      : [];
+
+    const [catalogContext, userContext] = await Promise.all([
+      buildCatalogContext(),
+      buildUserContext(requester),
+    ]);
+    const pageDescription = describeCurrentPage(currentPage);
+    const systemInstruction = buildSystemPrompt(catalogContext, userContext, pageDescription);
+
+    const reply = await answerHelpQuestion(formattedHistory, message.trim(), systemInstruction);
+
+    return res.status(200).json({
+      success: true,
+      source: "gemini",
+      reply,
+    });
+  } catch (error) {
+    console.error("Assistant error:", error);
+    // Fall back to FAQ matching if the Gemini call fails (bad key, quota, network, etc.)
+    const fallback = findBestFaqMatch(req.body?.message || "");
+    return res.status(200).json({
+      success: true,
+      source: "faq-fallback-error",
+      reply:
+        fallback ||
+        "Sorry, I'm having trouble answering right now. Please try again in a moment, or contact the site admin.",
+    });
+  }
+};
+
+// GET /assistant/faqs - lets the frontend show suggested/quick questions
+const getFaqs = (req, res) => {
+  res.status(200).json({
+    success: true,
+    faqs: QUICK_QUESTIONS,
+  });
+};
+
+// Very simple keyword-overlap matcher used only as a fallback when Gemini
+// is unavailable (no API key, or the API call failed).
+function findBestFaqMatch(message) {
+  const normalized = message.toLowerCase();
+  let best = null;
+  let bestScore = 0;
+
+  for (const item of QUICK_QUESTIONS) {
+    const words = item.question.toLowerCase().split(/\W+/).filter(Boolean);
+    let score = 0;
+    for (const w of words) {
+      if (w.length > 3 && normalized.includes(w)) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = item;
+    }
+  }
+
+  return bestScore > 0 ? best.answer : null;
+}
+
+module.exports = { chatWithAssistant, getFaqs };
