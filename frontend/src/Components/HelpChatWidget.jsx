@@ -22,20 +22,47 @@ const STARTER_QUESTIONS = [
   "How do I add a book as admin?",
 ];
 
-// Gemini replies in light Markdown (mainly **bold**). Rather than pulling in a
-// full markdown library or using dangerouslySetInnerHTML (risky with AI text),
-// this splits on **bold** markers and renders them as real <strong> elements,
-// leaving everything else — including list markers like "*" or "1." — as
-// plain text, same as the source text.
-function renderFormattedText(text) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+// Gemini replies in light Markdown (mainly **bold**, *italic*, and "* "
+// bullet lines). Rather than pulling in a full markdown library or using
+// dangerouslySetInnerHTML (risky with AI text), this processes the reply
+// line by line: a line starting with "* " becomes a real bullet point
+// (dot + text, not a literal asterisk); within any line, **bold** becomes
+// <strong> and single *italic* becomes <em> (checked in that order, since
+// ** must be matched before a lone * is considered). Numbered lines
+// ("1. ", "2. ") and plain lines are left as-is, just with bold/italic applied.
+function renderInline(line, lineKey) {
+  const parts = line.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 3) {
+      return <strong key={`${lineKey}-${i}`}>{part.slice(2, -2)}</strong>;
     }
-    // Plain text segments don't need a wrapper — bare strings render fine
-    // directly in a React children array, no Fragment/key required.
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 1) {
+      return <em key={`${lineKey}-${i}`}>{part.slice(1, -1)}</em>;
+    }
     return part;
+  });
+}
+
+function renderFormattedText(text) {
+  // Defensive: if the API ever returns something other than a plain string
+  // (e.g. a malformed/non-JSON response from a misconfigured deployment),
+  // fall back to a safe placeholder instead of crashing this component —
+  // and, since it has no error boundary above it, the whole app.
+  if (typeof text !== "string") {
+    return "Sorry, I received an unexpected response. Please try again.";
+  }
+  const lines = text.split("\n");
+  return lines.map((line, i) => {
+    const bulletMatch = line.match(/^\s*\*\s+(.*)$/);
+    if (bulletMatch) {
+      return (
+        <div key={i} className="flex gap-1.5 pl-0.5">
+          <span aria-hidden="true">•</span>
+          <span>{renderInline(bulletMatch[1], i)}</span>
+        </div>
+      );
+    }
+    return <div key={i}>{renderInline(line, i)}</div>;
   });
 }
 
@@ -91,6 +118,13 @@ export default function HelpChatWidget() {
         history,
         currentPage: location.pathname,
       });
+
+      if (!res.data || typeof res.data.reply !== "string") {
+        // Happens if the API base URL is misconfigured and the request
+        // silently lands somewhere else (e.g. the frontend's own SPA
+        // fallback page) instead of the actual backend.
+        throw new Error("Assistant response was missing a reply.");
+      }
 
       setMessages((prev) => [
         ...prev,
