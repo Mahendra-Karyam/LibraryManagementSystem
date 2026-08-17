@@ -31,7 +31,9 @@ export default function UserLoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -41,11 +43,13 @@ export default function UserLoginPage() {
         const token = res.data.token;
         localStorage.setItem("token", token); // ✅ Save the new user's token
         localStorage.setItem("role", "user");
-        navigate("/user/availablebooks");
-        alert("Login successful!");
+        setMessage("");
+        setSuccessMessage("Login successful!");
         setEmail("");
         setPassword("");
-        setMessage("");
+        setTimeout(() => {
+          navigate("/user/availablebooks");
+        }, 800);
       } else {
         const responseData = res.data;
         setMessage(responseData.message);
@@ -76,13 +80,16 @@ export default function UserLoginPage() {
       });
 
       if (res.status === 200 || res.status === 201) {
-        alert(res.data.message || "Password updated successfully!");
-        navigate("/user/login");
-        setMode("login");
-        setEmail("");
+        setMessage("");
+        setSuccessMessage(res.data.message || "Password updated successfully!");
         setNewPassword("");
         setConfirmPassword("");
-        setMessage("");
+        setTimeout(() => {
+          navigate("/user/login");
+          setMode("login");
+          setEmail("");
+          setSuccessMessage("");
+        }, 1500);
       } else {
         setMessage(res.data.message);
       }
@@ -104,12 +111,16 @@ export default function UserLoginPage() {
       const responseData = res.data;
 
       if (res.status === 200 || res.status === 201) {
-        navigate("/user/login");
-        setMode("login");
-        setUserName("");
-        setEmail("");
-        setPassword("");
         setMessage("");
+        setSuccessMessage("Account created successfully! Please log in.");
+        setUserName("");
+        setPassword("");
+        setTimeout(() => {
+          navigate("/user/login");
+          setMode("login");
+          setEmail("");
+          setSuccessMessage("");
+        }, 1200);
       } else {
         console.log(responseData.message || "Invalid username or password");
       }
@@ -170,6 +181,7 @@ export default function UserLoginPage() {
                   onClick={() => {
                     setMode("login");
                     setMessage("");
+                    setSuccessMessage("");
                     navigate("/user/login");
                   }}
                   className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
@@ -186,6 +198,7 @@ export default function UserLoginPage() {
                   onClick={() => {
                     setMode("signup");
                     setMessage("");
+                    setSuccessMessage("");
                     navigate("/user/signup");
                   }}
                   className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
@@ -262,6 +275,7 @@ export default function UserLoginPage() {
                     onClick={() => {
                       setMode("forgot");
                       setMessage("");
+                      setSuccessMessage("");
                       navigate("/user/forgot-password");
                     }}
                     className="text-xs font-medium text-blue-900 hover:underline cursor-pointer"
@@ -287,7 +301,12 @@ export default function UserLoginPage() {
                   <>
                     Don&apos;t have an account?{' '}
                     <span
-                      onClick={() => setMode("signup")}
+                      onClick={() => {
+                        setMode("signup");
+                        setMessage("");
+                        setSuccessMessage("");
+                        navigate("/user/signup");
+                      }}
                       className="text-blue-900 font-semibold cursor-pointer underline"
                       role="button"
                       tabIndex={0}
@@ -301,6 +320,8 @@ export default function UserLoginPage() {
                     <span
                       onClick={() => {
                         setMode("login");
+                        setMessage("");
+                        setSuccessMessage("");
                         navigate("/user/login");
                       }}
                       className="text-blue-900 font-semibold cursor-pointer underline"
@@ -314,7 +335,12 @@ export default function UserLoginPage() {
                   <>
                     Already have an account?{' '}
                     <span
-                      onClick={() => setMode("login")}
+                      onClick={() => {
+                        setMode("login");
+                        setMessage("");
+                        setSuccessMessage("");
+                        navigate("/user/login");
+                      }}
                       className="text-blue-900 font-semibold cursor-pointer underline"
                       role="button"
                       tabIndex={0}
@@ -336,6 +362,12 @@ export default function UserLoginPage() {
               </div>
             </div>
           </form>
+
+          {successMessage && (
+            <div className="mt-4 rounded-xl bg-green-100 px-4 py-3 text-center text-sm text-green-700 break-words">
+              {successMessage}
+            </div>
+          )}
 
           {message && (
             <div className="mt-4 rounded-xl bg-red-100 px-4 py-3 text-center text-sm text-red-700 break-words">
