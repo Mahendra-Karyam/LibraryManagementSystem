@@ -18,6 +18,7 @@ export default function App() {
         <Route path="/" element={<WelcomePage />} />
         <Route path="/user/login" element={<UserLoginPage />} />
         <Route path="/user/signup" element={<UserLoginPage />} />
+        <Route path="/user/forgot-password" element={<UserLoginPage />} />
 
         {/*
           🔐 ProtectedRoute is used to protect pages like Dashboard, AddBook, etc.

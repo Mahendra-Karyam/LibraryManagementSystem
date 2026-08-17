@@ -11,7 +11,11 @@ export default function UserLoginPage() {
   /*This checks if the current URL contains the word "signup".
   If yes → initialMode = "signup".
   Otherwise → initialMode = "login".*/
-  const initialMode = location.pathname.includes("signup") ? "signup" : "login";
+  const initialMode = location.pathname.includes("signup")
+    ? "signup"
+    : location.pathname.includes("forgot-password")
+    ? "forgot"
+    : "login";
 
   /*This creates a React state variable called mode.
   It can only be "login" or "signup".
@@ -24,6 +28,8 @@ export default function UserLoginPage() {
   const [userName, setUserName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
   const handleLoginSubmit = async (e) => {
@@ -43,6 +49,42 @@ export default function UserLoginPage() {
       } else {
         const responseData = res.data;
         setMessage(responseData.message);
+      }
+    } catch (error) {
+      if (error.response?.data?.message) {
+        setMessage(error.response.data.message);
+      } else {
+        setMessage("An unexpected error occurred. Please try again!");
+      }
+      console.error("Request failed:", error);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      setMessage("Passwords do not match!");
+      return;
+    }
+
+    try {
+      const res = await api.post("/user/forgot-password", {
+        email,
+        newPassword,
+        confirmPassword,
+      });
+
+      if (res.status === 200 || res.status === 201) {
+        alert(res.data.message || "Password updated successfully!");
+        navigate("/user/login");
+        setMode("login");
+        setEmail("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setMessage("");
+      } else {
+        setMessage(res.data.message);
       }
     } catch (error) {
       if (error.response?.data?.message) {
@@ -99,55 +141,65 @@ export default function UserLoginPage() {
 
         <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border-2 border-amber-950 bg-white/95 p-6 shadow-[0_0_30px_rgba(0,0,0,0.35)] min-h-[600px] flex flex-col">
           <form
-            onSubmit={mode === "login" ? handleLoginSubmit : handleSignUpSubmit}
+            onSubmit={
+              mode === "login"
+                ? handleLoginSubmit
+                : mode === "forgot"
+                ? handleForgotPasswordSubmit
+                : handleSignUpSubmit
+            }
             className="flex flex-1 flex-col gap-6"
           >
             <div className="text-center">
               <h1 className="text-3xl font-bold text-slate-900">
-                {mode === "login" ? "User Login" : "User Signup"}
+                {mode === "login" ? "User Login" : mode === "forgot" ? "Reset Password" : "User Signup"}
               </h1>
               <p className="text-sm text-slate-600 mt-2">
                 {mode === "login"
                   ? "Access your library account with email and password."
+                  : mode === "forgot"
+                  ? "Enter your email and choose a new password."
                   : "Create a new user account to borrow books."
                 }
               </p>
             </div>
 
-            <div className="flex border-2 border-gray-200 rounded-full overflow-hidden h-12">
-              <div
-                onClick={() => {
-                  setMode("login");
-                  setMessage("");
-                  navigate("/user/login");
-                }}
-                className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
-                  mode === "login"
-                    ? "bg-blue-900 text-cyan-100"
-                    : "bg-white text-slate-700 hover:bg-slate-100"
-                }`}
-                role="button"
-                tabIndex={0}
-              >
-                Login
+            {mode !== "forgot" && (
+              <div className="flex border-2 border-gray-200 rounded-full overflow-hidden h-12">
+                <div
+                  onClick={() => {
+                    setMode("login");
+                    setMessage("");
+                    navigate("/user/login");
+                  }}
+                  className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
+                    mode === "login"
+                      ? "bg-blue-900 text-cyan-100"
+                      : "bg-white text-slate-700 hover:bg-slate-100"
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                >
+                  Login
+                </div>
+                <div
+                  onClick={() => {
+                    setMode("signup");
+                    setMessage("");
+                    navigate("/user/signup");
+                  }}
+                  className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
+                    mode === "signup"
+                      ? "bg-blue-900 text-cyan-100"
+                      : "bg-white text-slate-700 hover:bg-slate-100"
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                >
+                  Signup
+                </div>
               </div>
-              <div
-                onClick={() => {
-                  setMode("signup");
-                  setMessage("");
-                  navigate("/user/signup");
-                }}
-                className={`flex-1 flex items-center justify-center cursor-pointer select-none text-sm font-semibold transition ${
-                  mode === "signup"
-                    ? "bg-blue-900 text-cyan-100"
-                    : "bg-white text-slate-700 hover:bg-slate-100"
-                }`}
-                role="button"
-                tabIndex={0}
-              >
-                Signup
-              </div>
-            </div>
+            )}
 
             <div className="flex flex-col gap-4">
               <div className="overflow-hidden h-14">
@@ -171,20 +223,61 @@ export default function UserLoginPage() {
                 required
                 className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
               />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                required
-                className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
-              />
+
+              {mode === "forgot" ? (
+                <>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New Password"
+                    required
+                    minLength={6}
+                    className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+                  />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm New Password"
+                    required
+                    minLength={6}
+                    className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+                  />
+                </>
+              ) : (
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  className="outline-none shadow-sm px-3 py-3 border-gray-200 border-2 rounded-lg placeholder:text-slate-400"
+                />
+              )}
+
+              {mode === "login" && (
+                <div className="text-right -mt-2">
+                  <span
+                    onClick={() => {
+                      setMode("forgot");
+                      setMessage("");
+                      navigate("/user/forgot-password");
+                    }}
+                    className="text-xs font-medium text-blue-900 hover:underline cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                  >
+                    Forgot password?
+                  </span>
+                </div>
+              )}
 
               <button
                 type="submit"
                 className="w-full bg-blue-900 text-cyan-100 px-4 py-3 rounded-xl font-semibold hover:bg-blue-800 transition cursor-pointer"
               >
-                {mode === "login" ? "Login" : "Signup"}
+                {mode === "login" ? "Login" : mode === "forgot" ? "Reset Password" : "Signup"}
               </button>
             </div>
 
@@ -200,6 +293,21 @@ export default function UserLoginPage() {
                       tabIndex={0}
                     >
                       Sign up
+                    </span>
+                  </>
+                ) : mode === "forgot" ? (
+                  <>
+                    Remembered your password?{' '}
+                    <span
+                      onClick={() => {
+                        setMode("login");
+                        navigate("/user/login");
+                      }}
+                      className="text-blue-900 font-semibold cursor-pointer underline"
+                      role="button"
+                      tabIndex={0}
+                    >
+                      Login
                     </span>
                   </>
                 ) : (

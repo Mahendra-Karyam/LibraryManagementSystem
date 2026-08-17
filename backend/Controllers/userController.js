@@ -79,6 +79,52 @@ const loginUser = async (req, res) => {
   }
 };
 
+// POST /api/user/forgot-password
+const forgotPassword = async (req, res) => {
+  try {
+    const { email, newPassword, confirmPassword } = req.body;
+
+    if (!email || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, new password and confirm password are required.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match.",
+      });
+    }
+
+    const existingUserWith_email = await User.findOne({ email });
+    if (!existingUserWith_email) {
+      return res.status(404).json({
+        success: false,
+        message: `No account found with the email ${email}.`,
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    existingUserWith_email.password = hashedPassword;
+    await existingUserWith_email.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully. You can now log in.",
+    });
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong while resetting the password, please try again later!",
+    });
+  }
+};
+
 // GET /api/user/profile (protected)
 const getProfile = (req, res) => {
   res.status(200).json({
@@ -88,4 +134,4 @@ const getProfile = (req, res) => {
   });
 };
 
-module.exports = { signupUser, loginUser, getProfile };
+module.exports = { signupUser, loginUser, getProfile, forgotPassword };
